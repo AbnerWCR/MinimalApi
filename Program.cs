@@ -25,10 +25,10 @@ app.MapGet("/fornecedor", async (
     .WithName("GetAllFornecedor")
     .WithTags("Fornecedor");
 
-app.MapGet("/fornecedor/{id}", async(
+app.MapGet("/fornecedor/{id}", async (
     Guid id, 
     MinimalContextDb context) => 
-    await context.Fornecedores.FindAsync(id)
+    await context.Fornecedores.AsNoTracking<Fornecedor>().FirstOrDefaultAsync(f => f.Id == id)
         is Fornecedor fornecedor
             ? Results.Ok(fornecedor)
             : Results.NotFound())
@@ -62,7 +62,8 @@ app.MapPut("/fornecedor/{id}", async (
     Guid id,
     Fornecedor fornecedor) =>
     {
-        var fornecedorBanco = await context.Fornecedores.FindAsync(id);
+        var fornecedorBanco = await context.Fornecedores.AsNoTracking<Fornecedor>()
+                                                        .FirstOrDefaultAsync(f => f.Id == id);
         if (fornecedorBanco == null)
             return Results.NotFound();
 
@@ -86,7 +87,8 @@ app.MapDelete("/fornecedor/{id}", async (
     MinimalContextDb context,
     Guid id) =>
     {
-        var fornecedor = await context.Fornecedores.FindAsync(id);
+        var fornecedor = await context.Fornecedores.AsNoTracking<Fornecedor>()
+                                                   .FirstOrDefaultAsync(f => f.Id == id);
         if (fornecedor == null)
             return Results.NotFound();
 
