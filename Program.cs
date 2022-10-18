@@ -1,6 +1,7 @@
 using DemoMinimalApi.Data;
 using DemoMinimalApi.Models;
 using Microsoft.EntityFrameworkCore;
+using MiniValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,9 +41,17 @@ app.MapPost("/fornecedor", async (
     MinimalContextDb context,
     Fornecedor fornecedor) => // o ideal seria VM, utilizando Modelo para fins de aprendizagem
     {
+        if (!MiniValidator.TryValidate(fornecedor, out var errors))
+            return Results.ValidationProblem(errors);
+
         context.Fornecedores.Add(fornecedor);
         var result = await context.SaveChangesAsync();
+
+        return result > 0
+            ? Results.CreatedAtRoute("GetFornecedorById", new { id = fornecedor.Id }, fornecedor)
+            : Results.BadRequest("Houve um problema ao salvar o registro");
     })
+    .ProducesValidationProblem()
     .Produces<Fornecedor>(StatusCodes.Status201Created)
     .Produces<Fornecedor>(StatusCodes.Status400BadRequest)
     .WithName("PostFornecedor")
