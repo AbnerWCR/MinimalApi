@@ -12,6 +12,8 @@ using NetDevPack.Identity.Model;
 
 var builder = WebApplication.CreateBuilder(args);
 
+#region Configure Services
+
 builder.Services.AddDbContext<MinimalContextDb>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -67,6 +69,11 @@ builder.Services.AddSwaggerGen(c =>
 
 });
 
+#endregion
+
+#region Configure Pipeline
+
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -78,7 +85,17 @@ if (app.Environment.IsDevelopment())
 app.UseAuthConfiguration();
 app.UseHttpsRedirection();
 
-app.MapPost("/registro", [AllowAnonymous] async (
+MapEndpoints(app);
+
+app.Run();
+
+#endregion
+
+#region "Endpoints"
+
+void MapEndpoints(WebApplication app)
+{
+    app.MapPost("/registro", [AllowAnonymous] async (
     SignInManager<IdentityUser> signInManager,
     UserManager<IdentityUser> userManager,
     IOptions<AppJwtSettings> appJwtSettings,
@@ -119,11 +136,11 @@ app.MapPost("/registro", [AllowAnonymous] async (
     .WithName("RegistroUsuario")
     .WithTags("Usuario");
 
-app.MapPost("/login", [AllowAnonymous] async (
-    SignInManager<IdentityUser> signInManager,
-    UserManager<IdentityUser> userManager,
-    IOptions<AppJwtSettings> appJwtSettings,
-    LoginUser loginUser) =>
+    app.MapPost("/login", [AllowAnonymous] async (
+        SignInManager<IdentityUser> signInManager,
+        UserManager<IdentityUser> userManager,
+        IOptions<AppJwtSettings> appJwtSettings,
+        LoginUser loginUser) =>
     {
         if (loginUser == null)
             return Results.BadRequest("Usuário não informado");
@@ -147,33 +164,33 @@ app.MapPost("/login", [AllowAnonymous] async (
 
         return Results.Ok(jwt);
     })
-    .ProducesValidationProblem()
-    .Produces(StatusCodes.Status200OK)
-    .Produces(StatusCodes.Status404NotFound)
-    .WithName("LoginUsuario")
-    .WithTags("Usuario");
+        .ProducesValidationProblem()
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound)
+        .WithName("LoginUsuario")
+        .WithTags("Usuario");
 
-app.MapGet("/fornecedor", [AllowAnonymous] async (
-    MinimalContextDb context) =>
-    await context.Fornecedores.ToListAsync())
-    .WithName("GetAllFornecedor")
-    .WithTags("Fornecedor");
+    app.MapGet("/fornecedor", [AllowAnonymous] async (
+        MinimalContextDb context) =>
+        await context.Fornecedores.ToListAsync())
+        .WithName("GetAllFornecedor")
+        .WithTags("Fornecedor");
 
-app.MapGet("/fornecedor/{id}", [AllowAnonymous] async (
-    Guid id, 
-    MinimalContextDb context) => 
-    await context.Fornecedores.AsNoTracking<Fornecedor>().FirstOrDefaultAsync(f => f.Id == id)
-        is Fornecedor fornecedor
-            ? Results.Ok(fornecedor)
-            : Results.NotFound())
-    .Produces<Fornecedor>(StatusCodes.Status200OK)
-    .Produces<Fornecedor>(StatusCodes.Status404NotFound)
-    .WithName("GetFornecedorById")
-    .WithTags("Fornecedor");
+    app.MapGet("/fornecedor/{id}", [AllowAnonymous] async (
+        Guid id,
+        MinimalContextDb context) =>
+        await context.Fornecedores.AsNoTracking<Fornecedor>().FirstOrDefaultAsync(f => f.Id == id)
+            is Fornecedor fornecedor
+                ? Results.Ok(fornecedor)
+                : Results.NotFound())
+        .Produces<Fornecedor>(StatusCodes.Status200OK)
+        .Produces<Fornecedor>(StatusCodes.Status404NotFound)
+        .WithName("GetFornecedorById")
+        .WithTags("Fornecedor");
 
-app.MapPost("/fornecedor", [Authorize] async (
-    MinimalContextDb context,
-    Fornecedor fornecedor) => // o ideal seria VM, utilizando Modelo para fins de aprendizagem
+    app.MapPost("/fornecedor", [Authorize] async (
+        MinimalContextDb context,
+        Fornecedor fornecedor) => // o ideal seria VM, utilizando Modelo para fins de aprendizagem
     {
         if (!MiniValidator.TryValidate(fornecedor, out var errors))
             return Results.ValidationProblem(errors);
@@ -185,16 +202,16 @@ app.MapPost("/fornecedor", [Authorize] async (
             ? Results.CreatedAtRoute("GetFornecedorById", new { id = fornecedor.Id }, fornecedor)
             : Results.BadRequest("Houve um problema ao salvar o registro");
     })
-    .ProducesValidationProblem()
-    .Produces<Fornecedor>(StatusCodes.Status201Created)
-    .Produces<Fornecedor>(StatusCodes.Status400BadRequest)
-    .WithName("PostFornecedor")
-    .WithTags("Fornecedor");
+        .ProducesValidationProblem()
+        .Produces<Fornecedor>(StatusCodes.Status201Created)
+        .Produces<Fornecedor>(StatusCodes.Status400BadRequest)
+        .WithName("PostFornecedor")
+        .WithTags("Fornecedor");
 
-app.MapPut("/fornecedor/{id}", [Authorize] async (
-    MinimalContextDb context,
-    Guid id,
-    Fornecedor fornecedor) =>
+    app.MapPut("/fornecedor/{id}", [Authorize] async (
+        MinimalContextDb context,
+        Guid id,
+        Fornecedor fornecedor) =>
     {
         var fornecedorBanco = await context.Fornecedores.AsNoTracking<Fornecedor>()
                                                         .FirstOrDefaultAsync(f => f.Id == id);
@@ -211,15 +228,15 @@ app.MapPut("/fornecedor/{id}", [Authorize] async (
             ? Results.NoContent()
             : Results.BadRequest("Houve um problema ao salvar o registro");
     })
-    .ProducesValidationProblem()
-    .Produces(StatusCodes.Status204NoContent)
-    .Produces(StatusCodes.Status400BadRequest)
-    .WithName("PutFornecedor")
-    .WithTags("Fornecedor");
+        .ProducesValidationProblem()
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status400BadRequest)
+        .WithName("PutFornecedor")
+        .WithTags("Fornecedor");
 
-app.MapDelete("/fornecedor/{id}", [Authorize] async (
-    MinimalContextDb context,
-    Guid id) =>
+    app.MapDelete("/fornecedor/{id}", [Authorize] async (
+        MinimalContextDb context,
+        Guid id) =>
     {
         var fornecedor = await context.Fornecedores.AsNoTracking<Fornecedor>()
                                                    .FirstOrDefaultAsync(f => f.Id == id);
@@ -233,10 +250,11 @@ app.MapDelete("/fornecedor/{id}", [Authorize] async (
             ? Results.NoContent()
             : Results.BadRequest("Houve um problema ao salvar o registro");
     })
-    .Produces(StatusCodes.Status400BadRequest)
-    .Produces(StatusCodes.Status404NotFound)
-    .RequireAuthorization("ExcluirFornecedor")
-    .WithName("DeleteFornecedor")
-    .WithTags("Fornecedor");
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status404NotFound)
+        .RequireAuthorization("ExcluirFornecedor")
+        .WithName("DeleteFornecedor")
+        .WithTags("Fornecedor");
+}
 
-app.Run();
+#endregion
