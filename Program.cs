@@ -2,6 +2,7 @@ using DemoMinimalApi.Data;
 using DemoMinimalApi.Models;
 using Microsoft.EntityFrameworkCore;
 using MiniValidation;
+using NetDevPack.Identity.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,13 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<MinimalContextDb>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddIdentityEntityFrameworkContextConfiguration(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+    b => b.MigrationsAssembly("DemoMinimalApi")));
+
+builder.Services.AddIdentityConfiguration();
+builder.Services.AddJwtConfiguration(builder.Configuration, "AppSettings");
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -18,6 +26,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseAuthConfiguration();
+app.UseHttpsRedirection();
 
 app.MapGet("/fornecedor", async (
     MinimalContextDb context) =>
@@ -103,7 +114,5 @@ app.MapDelete("/fornecedor/{id}", async (
     .Produces(StatusCodes.Status404NotFound)
     .WithName("DeleteFornecedor")
     .WithTags("Fornecedor");
-
-app.UseHttpsRedirection();
 
 app.Run();
