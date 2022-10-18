@@ -36,6 +36,18 @@ app.MapGet("/fornecedor/{id}", async(
     .WithName("GetFornecedorById")
     .WithTags("Fornecedor");
 
+app.MapPost("/fornecedor", async (
+    MinimalContextDb context,
+    Fornecedor fornecedor) => // o ideal seria VM, utilizando Modelo para fins de aprendizagem
+    {
+        context.Fornecedores.Add(fornecedor);
+        var result = await context.SaveChangesAsync();
+    })
+    .Produces<Fornecedor>(StatusCodes.Status201Created)
+    .Produces<Fornecedor>(StatusCodes.Status400BadRequest)
+    .WithName("PostFornecedor")
+    .WithTags("Fornecedor");
+
 app.UseHttpsRedirection();
 
 app.Run();
