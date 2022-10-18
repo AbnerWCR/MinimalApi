@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using MiniValidation;
+using NetDevPack.Identity;
 using NetDevPack.Identity.Jwt;
 using NetDevPack.Identity.Model;
 
@@ -33,7 +34,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthConfiguration();
 app.UseHttpsRedirection();
 
-app.MapPost("/usuario", async (
+app.MapPost("/registro", async (
     SignInManager<IdentityUser> signInManager,
     UserManager<IdentityUser> userManager,
     IOptions<AppJwtSettings> appJwtSettings,
@@ -60,6 +61,7 @@ app.MapPost("/usuario", async (
         var jwt = new JwtBuilder()
                     .WithUserManager(userManager)
                     .WithJwtSettings(appJwtSettings.Value)
+                    .WithEmail(user.Email)
                     .WithJwtClaims()
                     .WithUserClaims()
                     .WithUserRoles()
@@ -71,6 +73,40 @@ app.MapPost("/usuario", async (
     .Produces(StatusCodes.Status200OK)
     .Produces(StatusCodes.Status400BadRequest)
     .WithName("RegistroUsuario")
+    .WithTags("Usuario");
+
+app.MapPost("/login", async (
+    SignInManager<IdentityUser> signInManager,
+    UserManager<IdentityUser> userManager,
+    IOptions<AppJwtSettings> appJwtSettings,
+    LoginUser loginUser) =>
+    {
+        if (loginUser == null)
+            return Results.BadRequest("Usuário não informado");
+
+        if (!MiniValidator.TryValidate(loginUser, out var errors))
+            return Results.ValidationProblem(errors);
+
+        var result = await signInManager.PasswordSignInAsync(loginUser.Email, loginUser.Password, false, false);
+
+        if (!result.Succeeded)
+            return Results.BadRequest("Usuário ou senha inválidos");
+
+        var jwt = new JwtBuilder()
+                    .WithUserManager(userManager)
+                    .WithJwtSettings(appJwtSettings.Value)
+                    .WithEmail(loginUser.Email)
+                    .WithJwtClaims()
+                    .WithUserClaims()
+                    .WithUserRoles()
+                    .BuildUserResponse();
+
+        return Results.Ok(jwt);
+    })
+    .ProducesValidationProblem()
+    .Produces(StatusCodes.Status200OK)
+    .Produces(StatusCodes.Status404NotFound)
+    .WithName("LoginUsuario")
     .WithTags("Usuario");
 
 app.MapGet("/fornecedor", async (
