@@ -1,8 +1,11 @@
 using DemoMinimalApi.Data;
 using DemoMinimalApi.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using MiniValidation;
 using NetDevPack.Identity.Jwt;
+using NetDevPack.Identity.Model;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +32,46 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthConfiguration();
 app.UseHttpsRedirection();
+
+app.MapPost("/usuario", async (
+    SignInManager<IdentityUser> signInManager,
+    UserManager<IdentityUser> userManager,
+    IOptions<AppJwtSettings> appJwtSettings,
+    RegisterUser registerUser) =>
+    {
+        if (registerUser == null)
+            return Results.BadRequest();
+
+        if (!MiniValidator.TryValidate(registerUser, out var errors))
+            return Results.ValidationProblem(errors);
+
+        var user = new IdentityUser
+        {
+            UserName = registerUser.Email,
+            Email = registerUser.Email,
+            EmailConfirmed = true
+        };
+
+        var result = await userManager.CreateAsync(user, registerUser.Password);
+
+        if (!result.Succeeded)
+            return Results.BadRequest(result.Errors);
+
+        var jwt = new JwtBuilder()
+                    .WithUserManager(userManager)
+                    .WithJwtSettings(appJwtSettings.Value)
+                    .WithJwtClaims()
+                    .WithUserClaims()
+                    .WithUserRoles()
+                    .BuildUserResponse();
+
+        return Results.Ok(jwt);
+    })
+    .ProducesValidationProblem()
+    .Produces(StatusCodes.Status200OK)
+    .Produces(StatusCodes.Status400BadRequest)
+    .WithName("RegistroUsuario")
+    .WithTags("Usuario");
 
 app.MapGet("/fornecedor", async (
     MinimalContextDb context) =>
