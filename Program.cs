@@ -57,6 +57,30 @@ app.MapPost("/fornecedor", async (
     .WithName("PostFornecedor")
     .WithTags("Fornecedor");
 
+app.MapPut("/fornecedor/{id}", async (
+    MinimalContextDb context,
+    Guid id,
+    Fornecedor fornecedor) =>
+    {
+        var fornecedorBanco = await context.Fornecedores.FindAsync(id);
+        if (fornecedorBanco == null)
+            return Results.NotFound();
+
+        if (!MiniValidator.TryValidate(fornecedor, out var errors))
+            return Results.ValidationProblem(errors);
+
+        context.Fornecedores.Update(fornecedor);
+        var result = await context.SaveChangesAsync();
+
+        return result > 0
+            ? Results.NoContent()
+            : Results.BadRequest("Houve um problema ao salvar o registro");
+    })
+    .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status400BadRequest)
+    .WithName("PutFornecedor")
+    .WithTags("Fornecedor");
+
 app.UseHttpsRedirection();
 
 app.Run();
