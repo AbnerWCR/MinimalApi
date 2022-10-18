@@ -1,5 +1,6 @@
 using DemoMinimalApi.Data;
 using DemoMinimalApi.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -23,6 +24,12 @@ builder.Services.AddIdentityEntityFrameworkContextConfiguration(options =>
 builder.Services.AddIdentityConfiguration();
 builder.Services.AddJwtConfiguration(builder.Configuration, "AppSettings");
 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ExcluirFornecedor",
+        policy => policy.RequireClaim("ExcluirFornecedor"));
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -34,7 +41,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthConfiguration();
 app.UseHttpsRedirection();
 
-app.MapPost("/registro", async (
+app.MapPost("/registro", [AllowAnonymous] async (
     SignInManager<IdentityUser> signInManager,
     UserManager<IdentityUser> userManager,
     IOptions<AppJwtSettings> appJwtSettings,
@@ -75,7 +82,7 @@ app.MapPost("/registro", async (
     .WithName("RegistroUsuario")
     .WithTags("Usuario");
 
-app.MapPost("/login", async (
+app.MapPost("/login", [AllowAnonymous] async (
     SignInManager<IdentityUser> signInManager,
     UserManager<IdentityUser> userManager,
     IOptions<AppJwtSettings> appJwtSettings,
@@ -109,13 +116,13 @@ app.MapPost("/login", async (
     .WithName("LoginUsuario")
     .WithTags("Usuario");
 
-app.MapGet("/fornecedor", async (
+app.MapGet("/fornecedor", [AllowAnonymous] async (
     MinimalContextDb context) =>
     await context.Fornecedores.ToListAsync())
     .WithName("GetAllFornecedor")
     .WithTags("Fornecedor");
 
-app.MapGet("/fornecedor/{id}", async (
+app.MapGet("/fornecedor/{id}", [AllowAnonymous] async (
     Guid id, 
     MinimalContextDb context) => 
     await context.Fornecedores.AsNoTracking<Fornecedor>().FirstOrDefaultAsync(f => f.Id == id)
@@ -127,7 +134,7 @@ app.MapGet("/fornecedor/{id}", async (
     .WithName("GetFornecedorById")
     .WithTags("Fornecedor");
 
-app.MapPost("/fornecedor", async (
+app.MapPost("/fornecedor", [Authorize] async (
     MinimalContextDb context,
     Fornecedor fornecedor) => // o ideal seria VM, utilizando Modelo para fins de aprendizagem
     {
@@ -147,7 +154,7 @@ app.MapPost("/fornecedor", async (
     .WithName("PostFornecedor")
     .WithTags("Fornecedor");
 
-app.MapPut("/fornecedor/{id}", async (
+app.MapPut("/fornecedor/{id}", [Authorize] async (
     MinimalContextDb context,
     Guid id,
     Fornecedor fornecedor) =>
@@ -173,7 +180,7 @@ app.MapPut("/fornecedor/{id}", async (
     .WithName("PutFornecedor")
     .WithTags("Fornecedor");
 
-app.MapDelete("/fornecedor/{id}", async (
+app.MapDelete("/fornecedor/{id}", [Authorize] async (
     MinimalContextDb context,
     Guid id) =>
     {
@@ -191,6 +198,7 @@ app.MapDelete("/fornecedor/{id}", async (
     })
     .Produces(StatusCodes.Status400BadRequest)
     .Produces(StatusCodes.Status404NotFound)
+    .RequireAuthorization("ExcluirFornecedor")
     .WithName("DeleteFornecedor")
     .WithTags("Fornecedor");
 
